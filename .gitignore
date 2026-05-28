@@ -1,0 +1,63 @@
+# ======================
+# CRITICAL - Never commit
+# ======================
+
+# Terraform state contains AWS account ID, ARNs, resource IDs, and infrastructure secrets
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.*.backup
+
+# Terraform variable files may contain secrets, API keys, or account-specific values
+*.tfvars
+*.tfvars.json
+
+# Terraform working directory contains downloaded providers and cached credentials
+.terraform/
+.terraform.lock.hcl
+
+# Terraform crash logs may contain sensitive output
+crash.log
+crash.*.log
+
+# AWS credentials and config
+.aws/
+*.pem
+*.key
+credentials
+
+# Environment variable files
+.env
+.env.*
+*.env
+
+# ======================
+# Build artifacts
+# ======================
+
+# Lambda deployment zips are generated from source - no need to store in git
+*.zip
+
+# Test output files
+response.json
+testfile.txt
+
+# ======================
+# Python
+# ======================
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+
+# ======================
+# OS/Editor noise
+# ======================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/settings.json
+.idea/

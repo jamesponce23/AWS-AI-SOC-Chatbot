@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SOC Copilot Chat</title>
+  <style>
+    body { font-family: sans-serif; background: #f4f4f9; padding: 2rem; }
+    #chat { 
+      border: 1px solid #ccc; 
+      padding: 1rem; 
+      height: 400px; 
+      overflow-y: auto; 
+      background: #fff; 
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    .message { padding: 0.5rem 1rem; border-radius: 15px; margin-bottom: 0.5rem; max-width: 80%; word-wrap: break-word; }
+    .user { background: #cce5ff; color: #004085; align-self: flex-end; margin-left: auto; }
+    .bot { background: #d4edda; color: #155724; align-self: flex-start; margin-right: auto; }
+    .timestamp { font-size: 0.7rem; color: #666; margin-top: 2px; }
+    #inputContainer { display: flex; }
+    #queryInput { flex: 1; padding: 0.5rem; border-radius: 8px; border: 1px solid #ccc; }
+    #sendBtn { padding: 0.5rem 1rem; margin-left: 0.5rem; border-radius: 8px; background: #007bff; color: #fff; border: none; cursor: pointer; }
+    #sendBtn:hover { background: #0056b3; }
+    .typing { font-style: italic; color: #888; }
+  </style>
+</head>
+<body>
+  <h1>SOC Copilot Chat</h1>
+  <div id="chat"></div>
+  <div id="inputContainer">
+    <input type="text" id="queryInput" placeholder="Ask SOC Copilot...">
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <script>
+    const chatDiv = document.getElementById("chat");
+    const input = document.getElementById("queryInput");
+    const btn = document.getElementById("sendBtn");
+
+    const API_ENDPOINT = "https://h8wvxbb595.execute-api.us-east-1.amazonaws.com/";
+
+    // Load chat history from localStorage
+    let chatHistory = JSON.parse(localStorage.getItem("chatHistory") || "[]");
+    chatHistory.forEach(msg => appendMessage(msg.text, msg.type, msg.timestamp));
+
+    function appendMessage(text, type, timestamp = null) {
+      const container = document.createElement("div");
+      container.style.display = "flex";
+      container.style.flexDirection = "column";
+      container.className = "message " + type;
+
+      const msg = document.createElement("span");
+      msg.textContent = text;
+
+      const ts = document.createElement("span");
+      ts.className = "timestamp";
+      ts.textContent = timestamp || new Date().toLocaleTimeString();
+
+      container.appendChild(msg);
+      container.appendChild(ts);
+      chatDiv.appendChild(container);
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+
+      // Save to chat history
+      chatHistory.push({ text, type, timestamp: ts.textContent });
+      localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+    }
+
+    async function sendQuery() {
+      const query = input.value.trim();
+      if (!query) return;
+      input.value = "";
+
+      appendMessage("You: " + query, "user");
+
+      // Show typing indicator
+      const typingIndicator = document.createElement("div");
+      typingIndicator.className = "typing";
+      typingIndicator.textContent = "SOC Copilot is typing...";
+      chatDiv.appendChild(typingIndicator);
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+      
+      try {
+        const response = await fetch(`${API_ENDPOINT}?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+
+        chatDiv.removeChild(typingIndicator);
+        appendMessage(data.response, "bot");
+      } catch (err) {
+        chatDiv.removeChild(typingIndicator);
+        appendMessage("Error: " + err.message, "bot");
+      }
+    }
+
+    btn.addEventListener("click", sendQuery);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") sendQuery(); });
+   
+  </script>
+</body>
+</html>
