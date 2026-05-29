@@ -7,13 +7,14 @@ resource "aws_api_gateway_rest_api" "soc_api" {
 }
 
 #################################################
-# Root GET method (optional - kept for health check)
+# Root GET method
 #################################################
 resource "aws_api_gateway_method" "root_get" {
-  rest_api_id   = aws_api_gateway_rest_api.soc_api.id
-  resource_id   = aws_api_gateway_rest_api.soc_api.root_resource_id
-  http_method   = "GET"
-  authorization = "NONE"
+  rest_api_id      = aws_api_gateway_rest_api.soc_api.id
+  resource_id      = aws_api_gateway_rest_api.soc_api.root_resource_id
+  http_method      = "GET"
+  authorization    = "NONE"
+  api_key_required = true
 }
 
 resource "aws_api_gateway_integration" "root_get_lambda" {
@@ -38,10 +39,11 @@ resource "aws_api_gateway_resource" "analyze" {
 # POST method for /analyze
 #################################################
 resource "aws_api_gateway_method" "post_method" {
-  rest_api_id   = aws_api_gateway_rest_api.soc_api.id
-  resource_id   = aws_api_gateway_resource.analyze.id
-  http_method   = "POST"
-  authorization = "NONE"
+  rest_api_id      = aws_api_gateway_rest_api.soc_api.id
+  resource_id      = aws_api_gateway_resource.analyze.id
+  http_method      = "POST"
+  authorization    = "NONE"
+  api_key_required = true
 }
 
 resource "aws_api_gateway_method_response" "post_method_response" {
@@ -129,11 +131,22 @@ resource "aws_api_gateway_integration_response" "options_integration_response" {
 resource "aws_api_gateway_deployment" "deployment" {
   rest_api_id = aws_api_gateway_rest_api.soc_api.id
 
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_method.root_get,
+      aws_api_gateway_method.post_method,
+    ]))
+  }
+
   depends_on = [
     aws_api_gateway_integration.lambda_integration,
     aws_api_gateway_integration_response.post_integration_response,
     aws_api_gateway_integration_response.options_integration_response
   ]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 #################################################
@@ -176,6 +189,47 @@ resource "aws_lambda_permission" "apigw_query" {
 }
 
 #################################################
+# API Key
+#################################################
+resource "aws_api_gateway_api_key" "soc_api_key" {
+  name    = "soc-copilot-api-key"
+  enabled = true
+}
+
+#################################################
+# Usage Plan (rate limiting + quota)
+#################################################
+resource "aws_api_gateway_usage_plan" "soc_usage_plan" {
+  name = "soc-copilot-usage-plan"
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.soc_api.id
+    stage  = aws_api_gateway_stage.dev_stage.stage_name
+  }
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.soc_api.id
+    stage  = aws_api_gateway_stage.prod_stage.stage_name
+  }
+
+  throttle_settings {
+    rate_limit  = 10
+    burst_limit = 20
+  }
+
+  quota_settings {
+    limit  = 1000
+    period = "DAY"
+  }
+}
+
+resource "aws_api_gateway_usage_plan_key" "soc_usage_plan_key" {
+  key_id        = aws_api_gateway_api_key.soc_api_key.id
+  key_type      = "API_KEY"
+  usage_plan_id = aws_api_gateway_usage_plan.soc_usage_plan.id
+}
+
+#################################################
 # Outputs
 #################################################
 output "chat_ui_api_url_dev" {
@@ -194,4 +248,10 @@ output "api_url_dev" {
 output "api_url_prod" {
   description = "Production base URL for SOC Copilot API"
   value       = aws_api_gateway_stage.prod_stage.invoke_url
+}
+
+output "api_key_value" {
+  description = "SOC Copilot API key — add to x-api-key header in frontend"
+  value       = aws_api_gateway_api_key.soc_api_key.value
+  sensitive   = true
 }

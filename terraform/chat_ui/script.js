@@ -2,8 +2,8 @@ const chatDiv = document.getElementById("chat");
 const input = document.getElementById("queryInput");
 const btn = document.getElementById("sendBtn");
 
-// ⚡ Replace with your API Gateway endpoint
-const API_ENDPOINT = "https://68pv702j3h.execute-api.us-east-1.amazonaws.com/prod/analyze";
+
+const API_ENDPOINT = "https://de1q4niq7ttje.cloudfront.net/analyze";
 
 // Load chat history from localStorage
 let chatHistory = JSON.parse(localStorage.getItem("chatHistory") || "[]");
