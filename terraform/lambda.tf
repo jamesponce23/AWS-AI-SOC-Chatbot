@@ -1,3 +1,18 @@
+# ============================
+# Package Lambda source at apply time so code edits actually deploy
+# ============================
+data "archive_file" "analyzer_zip" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/app.py"
+  output_path = "${path.module}/lambda/function.zip"
+}
+
+data "archive_file" "query_zip" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/query_handler.py"
+  output_path = "${path.module}/lambda/query_function.zip"
+}
+
 resource "aws_lambda_function" "analyzer" {
   function_name = "soc-copilot-analyzer"
   role          = aws_iam_role.lambda_role.arn
@@ -6,19 +21,17 @@ resource "aws_lambda_function" "analyzer" {
   timeout       = 180
   memory_size   = 256
 
-  filename         = "/home/system_admin23/AI SOC Agent/terraform/lambda/function.zip"
-  source_code_hash = filebase64sha256("/home/system_admin23/AI SOC Agent/terraform/lambda/function.zip")
+  filename         = data.archive_file.analyzer_zip.output_path
+  source_code_hash = data.archive_file.analyzer_zip.output_base64sha256
 
-  # ============================
-  # Add environment variable
-  # ============================
   environment {
     variables = {
-      DDB_TABLE = aws_dynamodb_table.soc_analysis.name
+      DDB_TABLE      = aws_dynamodb_table.soc_analysis.name
+      ALLOWED_ORIGIN = "https://${aws_cloudfront_distribution.chat_ui.domain_name}"
     }
   }
 }
- 
+
 resource "aws_lambda_permission" "s3" {
   statement_id  = "AllowS3Invoke"
   action        = "lambda:InvokeFunction"
@@ -36,7 +49,6 @@ resource "aws_s3_bucket_notification" "trigger" {
   }
 
   depends_on = [aws_lambda_permission.s3]
-
 }
 
 resource "aws_lambda_function" "query_api" {
@@ -44,16 +56,16 @@ resource "aws_lambda_function" "query_api" {
   role          = aws_iam_role.lambda_role.arn
   handler       = "query_handler.handler"
   runtime       = "python3.12"
-  timeout       = 180   
-  memory_size   = 256   
+  timeout       = 180
+  memory_size   = 256
 
-  filename         = "/home/system_admin23/AI SOC Agent/terraform/lambda/query_function.zip"
-  source_code_hash = filebase64sha256("/home/system_admin23/AI SOC Agent/terraform/lambda/query_function.zip")
+  filename         = data.archive_file.query_zip.output_path
+  source_code_hash = data.archive_file.query_zip.output_base64sha256
 
   environment {
     variables = {
-      DDB_TABLE = aws_dynamodb_table.soc_analysis.name
+      DDB_TABLE      = aws_dynamodb_table.soc_analysis.name
+      ALLOWED_ORIGIN = "https://${aws_cloudfront_distribution.chat_ui.domain_name}"
     }
   }
 }
- 

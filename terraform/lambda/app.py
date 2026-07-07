@@ -2,6 +2,7 @@ import json
 import boto3
 import gzip
 import os
+import re
 import time
 from datetime import datetime, timezone, timedelta
 
@@ -18,6 +19,16 @@ bedrock = boto3.client("bedrock-runtime")
 DDB_TABLE = os.environ.get("DDB_TABLE", "SOCAnalysis")
 MODEL_ID = "meta.llama3-70b-instruct-v1:0"
 TTL_DAYS = 30
+# Locked to the chat UI origin by Terraform; "*" only as a local fallback.
+ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "*")
+
+# Strip Llama chat-template control tokens (e.g. <|eot_id|>) from user input
+# so a query can't inject a fake system/assistant turn (prompt injection).
+_CONTROL_TOKEN = re.compile(r"<\|.*?\|>")
+
+
+def sanitize_query(text: str) -> str:
+    return _CONTROL_TOKEN.sub("", text).strip()
 
 # =========================
 # Only store these high-value security events
@@ -198,7 +209,7 @@ def handle_s3(event):
 def handle_api(event):
     print("API request received")
     body = json.loads(event.get("body", "{}"))
-    user_query = body.get("query", "").strip()
+    user_query = sanitize_query(body.get("query", ""))
     if not user_query:
         return {"statusCode": 400, "body": "Missing query"}
 
@@ -239,7 +250,7 @@ def handle_api(event):
         "statusCode": 200,
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
+            "Access-Control-Allow-Origin": ALLOWED_ORIGIN
         },
         "body": json.dumps({"query": user_query, "response": answer})
     }
