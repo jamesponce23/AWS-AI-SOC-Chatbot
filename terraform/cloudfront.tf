@@ -29,7 +29,9 @@ resource "aws_cloudfront_distribution" "soc_api" {
 
     forwarded_values {
       query_string = true
-      headers      = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
+      # Authorization must be forwarded so the Cognito JWT reaches API Gateway;
+      # the Origin/Access-Control-* headers are needed for CORS preflight.
+      headers = ["Authorization", "Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
 
       cookies {
         forward = "none"

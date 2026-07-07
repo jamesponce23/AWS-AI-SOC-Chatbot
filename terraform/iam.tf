@@ -30,7 +30,7 @@ resource "aws_iam_role_policy" "extra" {
       {
         Effect = "Allow",
         Action = ["bedrock:InvokeModel"],
-        Resource = "*"
+        Resource = "arn:aws:bedrock:us-east-1::foundation-model/meta.llama3-70b-instruct-v1:0"
       }, 
       {
   Effect = "Allow",
@@ -40,12 +40,11 @@ resource "aws_iam_role_policy" "extra" {
     "dynamodb:PutItem",
     "dynamodb:Query"
   ],
-  Resource = "${aws_dynamodb_table.soc_analysis.arn}"
+  Resource = [
+    aws_dynamodb_table.soc_analysis.arn,
+    "${aws_dynamodb_table.soc_analysis.arn}/index/*"
+  ]
 }
     ]
   })
-}
-resource "aws_iam_role_policy_attachment" "lambda_dynamodb" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
 }

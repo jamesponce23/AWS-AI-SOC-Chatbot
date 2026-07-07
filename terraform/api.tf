@@ -13,7 +13,8 @@ resource "aws_api_gateway_method" "root_get" {
   rest_api_id      = aws_api_gateway_rest_api.soc_api.id
   resource_id      = aws_api_gateway_rest_api.soc_api.root_resource_id
   http_method      = "GET"
-  authorization    = "NONE"
+  authorization    = "COGNITO_USER_POOLS"
+  authorizer_id    = aws_api_gateway_authorizer.cognito.id
   api_key_required = true
 }
 
@@ -42,7 +43,8 @@ resource "aws_api_gateway_method" "post_method" {
   rest_api_id      = aws_api_gateway_rest_api.soc_api.id
   resource_id      = aws_api_gateway_resource.analyze.id
   http_method      = "POST"
-  authorization    = "NONE"
+  authorization    = "COGNITO_USER_POOLS"
+  authorizer_id    = aws_api_gateway_authorizer.cognito.id
   api_key_required = true
 }
 
@@ -73,7 +75,8 @@ resource "aws_api_gateway_integration_response" "post_integration_response" {
   status_code = aws_api_gateway_method_response.post_method_response.status_code
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin" = "'*'"
+    # Locked to the chat UI's CloudFront origin instead of "*".
+    "method.response.header.Access-Control-Allow-Origin" = "'https://${aws_cloudfront_distribution.chat_ui.domain_name}'"
   }
 }
 
@@ -96,7 +99,7 @@ resource "aws_api_gateway_integration" "options_integration" {
 
   request_templates = {
     "application/json" = "{\"statusCode\": 200}"
-  }
+ }
 }
 
 resource "aws_api_gateway_method_response" "options_response" {
@@ -121,7 +124,8 @@ resource "aws_api_gateway_integration_response" "options_integration_response" {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST,GET'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    # Locked to the chat UI's CloudFront origin instead of "*".
+    "method.response.header.Access-Control-Allow-Origin"  = "'https://${aws_cloudfront_distribution.chat_ui.domain_name}'"
   }
 }
 
