@@ -158,9 +158,11 @@ function updateAuthUI() {
 // Chat UI
 // ============================================================
 let chatHistory = JSON.parse(localStorage.getItem("chatHistory") || "[]");
-chatHistory.forEach(msg => appendMessage(msg.text, msg.type, msg.timestamp));
+chatHistory.forEach(msg => appendMessage(msg.text, msg.type, msg.timestamp, false));
 
-function appendMessage(text, type, timestamp = null) {
+// persist=false when replaying already-stored history, so we don't
+// re-append it (which previously doubled localStorage on every load).
+function appendMessage(text, type, timestamp = null, persist = true) {
   const container = document.createElement("div");
   container.className = "message " + type;
 
@@ -177,8 +179,10 @@ function appendMessage(text, type, timestamp = null) {
   chatDiv.appendChild(container);
   chatDiv.scrollTop = chatDiv.scrollHeight;
 
-  chatHistory.push({ text, type, timestamp: ts.textContent });
-  localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+  if (persist) {
+    chatHistory.push({ text, type, timestamp: ts.textContent });
+    localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+  }
 }
 
 async function sendQuery() {
