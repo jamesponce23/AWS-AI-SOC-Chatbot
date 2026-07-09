@@ -1,4 +1,15 @@
 terraform {
+  # b2: remote state in S3 with native S3 locking (use_lockfile).
+  # Backend blocks can't use variables, so the account id is
+  # hardcoded here.
+  backend "s3" {
+    bucket       = "soc-copilot-tfstate-123456789012"
+    key          = "soc-copilot/terraform.tfstate"
+    region       = "us-east-1"
+    use_lockfile = true
+    encrypt      = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"

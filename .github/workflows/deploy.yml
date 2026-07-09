@@ -1,0 +1,50 @@
+name: terraform
+
+# Keyless deploys via GitHub OIDC — no AWS access keys stored in the repo.
+# The role's trust policy (oidc.tf) only allows this repo on refs/heads/main.
+on:
+  push:
+    branches: [main]
+    paths: ["terraform/**", ".github/workflows/deploy.yml"]
+  pull_request:
+    paths: ["terraform/**"]
+  workflow_dispatch: {}   # manual trigger for apply
+
+permissions:
+  id-token: write   # required to request the OIDC token
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  DEPLOY_ROLE_ARN: arn:aws:iam::123456789012:role/soc-copilot-github-deploy
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.7"
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -no-color
+
+      # Apply only on a manual run, so merging to main never auto-deploys.
+      - name: Terraform Apply
+        if: github.event_name == 'workflow_dispatch'
+        run: terraform apply -auto-approve -input=false -no-color

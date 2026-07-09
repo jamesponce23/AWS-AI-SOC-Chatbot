@@ -1,6 +1,9 @@
 resource "aws_iam_role" "lambda_role" {
   name = "soc-copilot-lambda-role"
 
+  # b1: cap this role's max permissions (see boundary.tf).
+  permissions_boundary = aws_iam_policy.lambda_boundary.arn
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
