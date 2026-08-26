@@ -155,9 +155,13 @@ Web Chatbot — analyst logs in, asks questions, gets AI-powered security summar
 ```bash
 cd terraform
 
+# The state bucket name embeds your AWS account id, so it is supplied at
+# init time rather than committed:
+cp backend.hcl.example backend.hcl     # fill in your bucket — backend.hcl is gitignored
+terraform init -backend-config=backend.hcl
+
 # Lambda zips are built automatically by the archive_file data sources —
 # no manual zipping required. Just:
-terraform init
 terraform apply
 ```
 

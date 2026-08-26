@@ -1,9 +1,10 @@
 terraform {
   # b2: remote state in S3 with native S3 locking (use_lockfile).
-  # Backend blocks can't use variables, so the account id is
-  # hardcoded here.
+  # Backend blocks can't use variables and the bucket name embeds the account
+  # id, so `bucket` is supplied at init time instead of committed:
+  #   terraform init -backend-config=backend.hcl     (backend.hcl is gitignored)
+  # See backend.hcl.example.
   backend "s3" {
-    bucket       = "soc-copilot-tfstate-123456789012"
     key          = "soc-copilot/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true

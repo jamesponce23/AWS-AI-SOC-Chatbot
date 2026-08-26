@@ -61,3 +61,6 @@ Thumbs.db
 *.swo
 .vscode/settings.json
 .idea/
+
+# Local backend config (state bucket name embeds the account id)
+backend.hcl

@@ -16,7 +16,11 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  DEPLOY_ROLE_ARN: arn:aws:iam::123456789012:role/soc-copilot-github-deploy
+  # Repository variables, so no account id is committed. Set them under
+  # Settings > Secrets and variables > Actions > Variables:
+  #   DEPLOY_ROLE_ARN  arn:aws:iam::<account id>:role/soc-copilot-github-deploy
+  #   TF_STATE_BUCKET  soc-copilot-tfstate-<account id>
+  DEPLOY_ROLE_ARN: ${{ vars.DEPLOY_ROLE_ARN }}
   TF_IN_AUTOMATION: "true"
 
 jobs:
@@ -39,7 +43,7 @@ jobs:
           terraform_version: "1.15.7"
 
       - name: Terraform Init
-        run: terraform init -input=false
+        run: terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
 
       - name: Terraform Plan
         run: terraform plan -input=false -no-color
