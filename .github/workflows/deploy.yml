@@ -6,8 +6,6 @@ on:
   push:
     branches: [main]
     paths: ["terraform/**", ".github/workflows/deploy.yml"]
-  pull_request:
-    paths: ["terraform/**"]
   workflow_dispatch: {}   # manual trigger for apply
 
 permissions:
