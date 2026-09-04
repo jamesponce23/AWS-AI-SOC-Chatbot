@@ -195,7 +195,7 @@ aws cloudfront create-invalidation --distribution-id <your-id> --paths "/*"
 ```
 
 ### CI/CD (GitHub Actions + OIDC)
-- `.github/workflows/deploy.yml` runs `terraform plan` on push/PR and applies only on a manual `workflow_dispatch`.
+- `.github/workflows/deploy.yml` runs `terraform plan` on push to `main` and applies only on a manual `workflow_dispatch`.
 - Authentication is via a GitHub OIDC provider assuming the `soc-copilot-github-deploy` IAM role — no long-lived AWS keys are stored in GitHub.
 
 ---
@@ -405,14 +405,14 @@ This was a three-part hardening pass to lock down not just the running app but t
 **b1 — Permission boundary + least-privilege deployer:**
 - Added a permission boundary `soc-copilot-lambda-boundary` on the Lambda role (`boundary.tf`), defined as a superset of the role's inline policy so the role can never escalate beyond it.
 - Created a `SOCCopilotDeployer` customer-managed policy (`deployer.tf`) scoped to only the 9 services the project actually uses (S3, DynamoDB, Lambda, IAM-role, CloudTrail scoped to `soc-copilot-*`/`SOCAnalysis`; CloudFront + Cognito left at `*` due to no resource-level scoping at create time; `iam:PassRole` limited to the Lambda role with `iam:PassedToService=lambda.amazonaws.com`). Attached it to both `terraform-user` and the OIDC deploy role.
-- **Removed** the over-privileged `terraform-users-group` from `terraform-user`, dropping unused EC2/RDS/Route53 access plus full Dynamo/S3/IAM/Lambda/Bedrock/Cognito. Validated by a real `plan` + `apply` under the reduced permissions (exit 0). Rollback if a future permission gap appears: `aws iam add-user-to-group --group-name terraform-users-group --user-name terraform-user`.
+- Made `SOCCopilotDeployer` the deploy identity's only source of standing permissions, replacing broader inherited access. Validated by a real `plan` + `apply` under the reduced permissions (exit 0).
 
 **b2 — Remote state:**
 - Migrated Terraform state to an S3 backend bucket `soc-copilot-tfstate-*` (versioned, SSE, public-access block, `prevent_destroy`) using **S3-native locking** (`use_lockfile = true` in the `main.tf` backend). The local `terraform.tfstate` remains as a backup. (An earlier DynamoDB lock table was used and then removed in favor of native locking.)
 
 **b3 — GitHub OIDC deployment pipeline:**
 - Added a GitHub OIDC provider and the `soc-copilot-github-deploy` role (`oidc.tf`), with trust scoped to the `jamesponce23/AWS-AI-SOC-Chatbot` repo on `refs/heads/main`.
-- Added `.github/workflows/deploy.yml`: `terraform plan` on push/PR, `apply` only on manual `workflow_dispatch`. No long-lived AWS keys stored in GitHub.
+- Added `.github/workflows/deploy.yml`: `terraform plan` on push to `main`, `apply` only on manual `workflow_dispatch`. No long-lived AWS keys stored in GitHub.
 
 New Terraform files from this pass: `boundary.tf`, `deployer.tf`, `remote_state.tf`, `oidc.tf`, `variables.tf`, plus edits to `iam.tf` / `main.tf` and the GitHub Actions workflow.
 
@@ -464,7 +464,7 @@ Crucially, the key is **never exposed to the browser**. Instead of shipping the 
 | `remote_state.tf` | S3 state bucket (versioned, SSE, PAB) |
 | `oidc.tf` | GitHub OIDC provider + `soc-copilot-github-deploy` role |
 | `variables.tf` | Input variables |
-| `.github/workflows/deploy.yml` | CI/CD: plan on push/PR, apply on manual dispatch |
+| `.github/workflows/deploy.yml` | CI/CD: plan on push to `main`, apply on manual dispatch |
 
 ---
 
